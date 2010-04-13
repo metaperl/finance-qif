@@ -6,8 +6,10 @@ use warnings;
 use Carp;
 use IO::File;
 
-our $VERSION = '3.01';
+our $VERSION = '3.02';
 $VERSION = eval $VERSION;
+
+our $die = \&Carp::croak;
 
 my %noninvestment = (
     "D" => "date",
@@ -172,9 +174,14 @@ sub new {
     bless( $self, $class );
 
     if ( $opt{file} ) {
-        $self->file( $opt{file} );
-        $self->open;
+      $self->file( $opt{file} );
+      $self->open;
+    } elsif ($opt{tmpfile}) {
+      my $fh = IO::File->new_tmpfile
+	or $die->("Failed to open tmpfile : $!");
+      $self->{_filehandle} = $fh;
     }
+
     return $self;
 }
 
@@ -202,15 +209,17 @@ sub _filehandle {
     if (@_) {
         my @args = @_;
         $self->{_filehandle} = IO::File->new(@args)
-          or croak("Failed to open file '$args[0]': $!");
+          or $die->("Failed to open file '$args[0]': $!");
         binmode( $self->{_filehandle} );
         $self->{_linecount} = 0;
     }
     if ( !$self->{_filehandle} ) {
-        croak("No filehandle available");
+        $die->("No filehandle available");
     }
     return $self->{_filehandle};
 }
+
+sub filehandle { $_[0]->_filehandle }
 
 sub open {
     my $self = shift;
@@ -237,7 +246,7 @@ sub open {
         $self->reset();
     }
     else {
-        croak("No file specified");
+        $die->("No file specified");
     }
 }
 
